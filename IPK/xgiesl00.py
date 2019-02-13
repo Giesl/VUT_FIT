@@ -8,11 +8,13 @@ import os
 import signal
 
 
+#http://blog.wachowicz.eu/?p=256
+
 class Server:
 	
 	
 	def __init__(self, port = 8000):
-		self.host = '127.0.0.1'
+		self.host = '192.168.1.109'
 		self.port = port
 
 	def start_server(self):
@@ -24,33 +26,41 @@ class Server:
 			self.shutdown_server()
 			exit(1)
 
-		logging.debug("Starting server on port " + str(self.port))
+		logging.info("Starting server on port " + str(self.port))
 		self.listen()
 
 	def gen_headers(self, code):
 	
 		header = '127.0.0.1'
-	
-		if code is 200:
+		
+		if code	== 1:
 			header = 'HTTP/1.1 200 OK\n'
-		elif code is 404:
-			header = 'HTTP/1.1 404 Not Found'
-		elif code is 405:
-			header = 'HTTP/1.1 405 Method Not Allowed'
-	
+			header += 'Connection: close\n'
+			#header += 'Keep-Alive: timeout=5, max=100\n'
+			header += 'Refresh: {0};\n'.format(self.time)
+		else:
+			if code == 200:
+				header = 'HTTP/1.1 200 OK\n'
+			elif code == 404:
+				header = 'HTTP/1.1 404 Not Found\n'
+			elif code == 405:
+				header = 'HTTP/1.1 405 Method Not Allowed\n'
+			header += 'Connection: close\n'
+
 		date = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())
 		header += 'Date: ' + date +'\n'
 		header += 'Content-Type: text/html; charset=utf-8\n'
-		header += 'Server: Simple-Python-HTTP-Server(xgiesl00)\n'
-		header += 'Connection: close\n\n'
+		header += 'Server: Simple-Python-HTTP-Server(xgiesl00)\n\n'
 
+			
+		logging.debug("GENERATED HEADER: " + header)
 		return header
 	
 	
 	#shutdown the socket
 	def shutdown_server(self):
 	    try:
-	    	logging.error("Shutting down the server")
+	    	logging.info("Shutting down the server")
 	    	s.socket.shutdown(socket.SHUT_RDWR)
 	    except Exception as e:
 	    	logging.error("Error with closing server:\n" + str(e))
@@ -63,11 +73,10 @@ class Server:
 		info = os.uname()
 		hostname = info[1]
 		cpu_info = info[4]
-		cpu_load = round(sum(os.getloadavg()) / len(os.getloadavg()),2)
 	
 		logging.debug(hostname)
 		logging.debug(cpu_info)
-		logging.debug(cpu_load)
+		#logging.debug(cpu_load)
 	
 		#exit(1)
 		#run socket
@@ -86,12 +95,47 @@ class Server:
 			logging.debug("Received:\n {0}".format(str(data)))
 			#check if is a GET method
 			method = data.split(' ')[0]
+
 			logging.debug("Method: " + method)
 			response_content = ''
+
+			path = data.split(' ')
+			if len(path) > 1:
+				path = path[1]
+
+			#logging.debug('path = ' + path)
 	
 			if method == 'GET':
-				response_header = self.gen_headers(200)
-				response_content = "<html><body><p>" + hostname + "</p></body></html>"
+				if path == '/hostname':
+					response_header = self.gen_headers(200)
+					response_content = "<html><body><p>" + hostname + "</p></body></html>"
+				elif path == '/cpu-name':
+					response_header = self.gen_headers(200)
+					response_content = "<html><body><p>" + cpu_info + "</p></body></html>"
+				elif '/load' in path:
+
+					cpu_load = str(round(sum(os.getloadavg()) / len(os.getloadavg()),3))
+					response_content = "<html><body><p>" + cpu_load + "</p></body></html>"
+					
+					refresh = path.split('?')
+
+					if len(refresh) > 1:
+						refresh = refresh[1]
+
+						if 'refresh=' in refresh:
+
+							self.time = refresh.split("=")[1]
+							logging.debug("refresh set to {0}s".format(self.time))
+							self.host = data.split('\n')
+							response_header = self.gen_headers(1)
+					else:
+						response_header = self.gen_headers(200)
+					
+
+				else:
+					response_header = self.gen_headers(404)
+					logging.debug("NOT FOUND")
+
 			else:
 				response_header = self.gen_headers(405)
 				logging.debug("BAD request")
