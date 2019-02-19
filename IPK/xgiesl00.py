@@ -7,14 +7,11 @@ import platform
 import os
 import signal
 
-
-#http://blog.wachowicz.eu/?p=256
-
 class Server:
 	
 	
 	def __init__(self, port = 8000):
-		self.host = '192.168.1.109'
+		self.host = 'localhost'
 		self.port = port
 
 	def start_server(self):
@@ -84,7 +81,7 @@ class Server:
 
 			logging.debug("Waiting for connection")
 			#set max qued connections to 5
-			self.socket.listen(5)
+			self.socket.listen(1)
 
 			conn, addr = self.socket.accept()
 			
@@ -98,6 +95,8 @@ class Server:
 
 			logging.debug("Method: " + method)
 			response_content = ''
+			response_header = gen_headers(404)
+
 
 			path = data.split(' ')
 			if len(path) > 1:
@@ -120,7 +119,7 @@ class Server:
 					refresh = path.split('?')
 
 					if len(refresh) > 1:
-						refresh = refresh[1]
+						#refresh = refresh[1]
 
 						if 'refresh=' in refresh:
 
