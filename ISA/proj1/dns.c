@@ -9,13 +9,14 @@
 
 
 //Header Files
-#include<stdio.h> //printf
-#include<string.h>    //strlen
-#include<stdlib.h>    //malloc
-#include<sys/socket.h>    //you know what this is for
-#include<arpa/inet.h> //inet_addr , inet_ntoa , ntohs etc
-#include<netinet/in.h>
-#include<unistd.h>    //getpid
+#include	<stdio.h> //printf
+#include	<string.h>    //strlen
+#include	<stdlib.h>    //malloc
+#include	<sys/socket.h>    //you know what this is for
+#include	<arpa/inet.h> //inet_addr , inet_ntoa , ntohs etc
+#include	<netinet/in.h>
+#include	<unistd.h>    //getpid
+#include	<stdbool.h>
 
 
 //Define variables
@@ -80,7 +81,7 @@ void get_qname(unsigned char* text, unsigned char* dst);
 void get_dns_answer(unsigned char *target);
 void ChangetoDnsNameFormat(unsigned char* dns,unsigned char* host);
 void ngethostbyname(unsigned char *host , int query_type);
-void get_name(unsigned char* data,unsigned char* dest, unsigned int* length);
+void get_name(unsigned char* data,unsigned char* dest, unsigned int* length, unsigned char* buffer);
 u_char* ReadName(unsigned char* reader,unsigned char* buffer,int* count);
 
 int main(int argc, char *argv[])
@@ -191,7 +192,7 @@ void get_dns_answer(unsigned char *target)
     	
     	int length;
     	unsigned char dest[100];
-    	get_name(data,dest,&length);
+    	get_name(data,dest,&length,buffer);
     	printf("%s\n",dest);
     }
 
@@ -201,7 +202,7 @@ void get_dns_answer(unsigned char *target)
     {
     	int length;
     	unsigned char dest[100];
-    	get_name(data,dest,&length);
+    	get_name(data,dest,&length,buffer);
     	printf("%s\n",dest);
     }
 
@@ -218,10 +219,11 @@ void get_dns_answer(unsigned char *target)
 }
 
 
-void get_name(unsigned char* data,unsigned char* dest, unsigned int* length)
+void get_name(unsigned char* data,unsigned char* dest, unsigned int* length, unsigned char* buffer)
 {	
 	int pos = 0;
 	*length = 1;
+	bool jumped = false;
 
 
 	//start of string
@@ -233,18 +235,24 @@ void get_name(unsigned char* data,unsigned char* dest, unsigned int* length)
 			pos++;
 			dest[pos] = *data;
 			*length = *length + 1;
+
 		}
 		//need to jump
 		else
 		{
-			int offset = (*data)*256 - 49152;
-			data = data + offset;
-			printf("While\n");
+			int offset = (*data)*256 + *(data+1) - 49152;
+			data = buffer + offset -1;
+			jumped = true;
 
 		}
+		data = data + 1;
 	}
 	//end of string
 	dest[pos]='\0';
+	if(jumped)
+	{
+		*length = *length + 1;
+	}
 	int num;
 	int i;
 	for(i = 0;i<(int)strlen((const char*)dest);i++)
@@ -258,6 +266,8 @@ void get_name(unsigned char* data,unsigned char* dest, unsigned int* length)
 		dest[i]='.';
 	}
 	dest[i-1]='\0';
+
+	printf("NAME:%s\n",dest);
 
 }
 
