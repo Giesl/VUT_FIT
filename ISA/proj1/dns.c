@@ -179,14 +179,28 @@ void get_dns_answer(unsigned char *target)
  	
  	//initalize pointers to dns response sections
  	dns = (struct DNS_HEADER*) buffer;
- 	data = &buffer[sizeof(struct DNS_HEADER) + (strlen((const char*)qname)+1 ) + sizeof(struct QUESTION)];
-
+ 	//data = &buffer[sizeof(struct DNS_HEADER) + (strlen((const char*)qname)+1 ) + sizeof(struct QUESTION)];
+    data = buffer + sizeof(struct DNS_HEADER);
     //Question section
     int stop = 0;
     printf("Question section (%d)", ntohs(dns->q_count));
     for(int i = 0;i<ntohs(dns->q_count);i++)
     {
+        int length;
+        unsigned char name[100];
+        get_name(data,name,&length,buffer);
+        data = data + length;
+        printf("\nNAME:%s",name);
+        printf("\nLENGTH:%d",length); 
+        struct QUESTION *q = (struct QUESTION*)(data);
+        printf("\nTYPE:%d\n",ntohs(q->qtype));
+        printf("CLASS:%d\n",ntohs(q->qclass));
+        data = data + sizeof(struct QUESTION);
 
+        if(ntohs(q->qtype) == 1)
+        {
+            printf("A\n");
+        }
     }
 
     //Answer section
@@ -198,20 +212,28 @@ void get_dns_answer(unsigned char *target)
     	int length;
     	unsigned char name[100];
     	get_name(data,name,&length,buffer);
-    	data += length;
+    	data = data + length;
+
     	//get resources
     	struct ANSWER answer;
     	answer.name = name;
     	printf("\nNAME:%s",answer.name);
+        printf("\nLENGTH:%d",length);
     	answer.resource = (struct REC_DATA*)(data);
-    	data += sizeof(struct REC_DATA);
-
-    	int type = ntohs(answer.resource->type);
-    	printf("\nTYPE:%d",type);
+        printf("\nTYPE:%d",ntohs(answer.resource->type));
+    	
     	//1 	-> IPv4
     	//28 	-> IPv6
-    	if(type == 1)
-    	{	//allocate memmory for data and copy it from buffer
+        
+        short type = ntohs(answer.resource->type);
+        printf(":%d",type);
+        data = data + sizeof(struct REC_DATA);
+        exit(0);
+    	if(ntohs(answer.resource->type) == 1)
+    	{	
+
+            printf("\nType 1");
+            //allocate memmory for data and copy it from buffer
     		answer.data = (unsigned char*)malloc(ntohs(answer.resource->data_len));
 
     		for(int j = 0;i<ntohs(answer.resource->data_len);j++)
@@ -222,7 +244,7 @@ void get_dns_answer(unsigned char *target)
     		answer.data[ntohs(answer.resource->data_len)] = '\0';
 
     	}
-    	else if (type == 28)
+    	else if (ntohs(answer.resource->type) == 28)
     	{
 
     	}
@@ -262,7 +284,7 @@ void get_name(unsigned char* data,unsigned char* dest, unsigned int* length, uns
 		{
 			
 			dest[pos++] = *data;
-			*length = *length + 1;
+			
 
 		}
 		//need to jump
@@ -274,6 +296,11 @@ void get_name(unsigned char* data,unsigned char* dest, unsigned int* length, uns
 			jumped = true;
 
 		}
+
+        if(jumped == false)
+        {
+            *length = *length + 1;
+        }
 		data = data + 1;
 	}
 	//end of string
