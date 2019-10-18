@@ -58,15 +58,20 @@ struct QUESTION
 };
  
 //Constant sized fields of the resource record structure
-struct ANSWER_RECORD
+struct REC_DATA
 {
-	unsigned char *name;
 	unsigned short type;
 	unsigned short _class;
 	unsigned int ttl;
 	unsigned short data_len;
-	unsigned char *data;
 
+};
+
+struct ANSWER
+{
+	unsigned char* name;
+	struct REC_DATA *resource;
+	unsigned char *data;
 };
  
 //Structure of a Query
@@ -154,17 +159,13 @@ void get_dns_answer(unsigned char *target)
  	qinfo->qtype = htons(TYPE_VALUE);
  	qinfo->qclass = htons(CLASS_VALUE);
 
- 	//QUERY COMPLETED NOW SEND IT
- 	printf("\nSending Packet...\n");
-
+ 	
  	if( sendto(sfd,(char*)buffer,sizeof(struct DNS_HEADER) + (strlen((const char*)qname)+1) + sizeof(struct QUESTION),0,(struct sockaddr*)&dest,sizeof(dest)) < 0)
  	{
  		perror("Error with sending datagram");
  	}
- 	printf("\nSending done\n");
-
+ 	
  	//now wait for answer from server
- 	printf("\nReceiving answer...\n");
  	int i = sizeof dest;
 
  	//read answer to buffer
@@ -175,11 +176,7 @@ void get_dns_answer(unsigned char *target)
  		perror("Error with receiving answer\n");
 
  	}
- 	printf("Answer received\n");
-
-
- 	struct ANSWER_RECORD answer[20];
-
+ 	
  	//initalize pointers to dns response sections
  	dns = (struct DNS_HEADER*) buffer;
  	data = &buffer[sizeof(struct DNS_HEADER) + (strlen((const char*)qname)+1 ) + sizeof(struct QUESTION)];
@@ -189,21 +186,52 @@ void get_dns_answer(unsigned char *target)
     printf("Question section (%d)", ntohs(dns->q_count));
     for(int i = 0;i<ntohs(dns->q_count);i++)
     {
-    	
-    	int length;
-    	unsigned char dest[100];
-    	get_name(data,dest,&length,buffer);
-    	printf("%s\n",dest);
+
     }
 
     //Answer section
     printf("\nAnswer section (%d)", ntohs(dns->ans_count));
     for(int i = 0;i<ntohs(dns->ans_count);i++)
     {
+    	
+    	//get name
     	int length;
-    	unsigned char dest[100];
-    	get_name(data,dest,&length,buffer);
-    	printf("%s\n",dest);
+    	unsigned char name[100];
+    	get_name(data,name,&length,buffer);
+    	data += length;
+    	//get resources
+    	struct ANSWER answer;
+    	answer.name = name;
+    	printf("\nNAME:%s",answer.name);
+    	answer.resource = (struct REC_DATA*)(data);
+    	data += sizeof(struct REC_DATA);
+
+    	int type = ntohs(answer.resource->type);
+    	printf("\nTYPE:%d",type);
+    	//1 	-> IPv4
+    	//28 	-> IPv6
+    	if(type == 1)
+    	{	//allocate memmory for data and copy it from buffer
+    		answer.data = (unsigned char*)malloc(ntohs(answer.resource->data_len));
+
+    		for(int j = 0;i<ntohs(answer.resource->data_len);j++)
+    		{
+    			answer.data[j] = *data;
+    			*data++;
+    		}
+    		answer.data[ntohs(answer.resource->data_len)] = '\0';
+
+    	}
+    	else if (type == 28)
+    	{
+
+    	}
+    	else
+    	{
+    		//get_name(data,answer.data,&length,buffer);
+    		//data += length;
+    	}
+
     }
 
     //Authority section
@@ -227,19 +255,20 @@ void get_name(unsigned char* data,unsigned char* dest, unsigned int* length, uns
 
 
 	//start of string
-	dest[pos]='\0';
+	dest[0]='\0';
 	while(*data!=0)
 	{
 		if(*data<192)
 		{
-			pos++;
-			dest[pos] = *data;
+			
+			dest[pos++] = *data;
 			*length = *length + 1;
 
 		}
 		//need to jump
 		else
 		{
+			//referenct to http://www.tcpipguide.com/free/t_DNSNameNotationandMessageCompressionTechnique-2.htm
 			int offset = (*data)*256 + *(data+1) - 49152;
 			data = buffer + offset -1;
 			jumped = true;
@@ -267,7 +296,6 @@ void get_name(unsigned char* data,unsigned char* dest, unsigned int* length, uns
 	}
 	dest[i-1]='\0';
 
-	printf("NAME:%s\n",dest);
 
 }
 
