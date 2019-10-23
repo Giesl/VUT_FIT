@@ -62,6 +62,13 @@ int main()
      *   +-----+------+----+------+----------------------------+
      *       p1-------^
      */
+    
+    
+    
+    
+    
+    
+    
     assert(first_arena != NULL);
     assert(first_arena->next == NULL);
     assert(first_arena->size > 0);
@@ -132,13 +139,15 @@ int main()
 
     debug_arenas();
 
-
+    Header *first = &first_arena[1];
+    Header *next = first->next;
+    
+    
     /***********************************************************************/
     // Uvolneni prvniho bloku
 
     mfree(p1);
 
-    //BREAK --TODO--
     
     /**
      *                p1          p2          p3
@@ -149,24 +158,45 @@ int main()
     // insert assert here
     debug_arenas();
 
-    Header *first = &first_arena[1];
-    Header *next = first->next;
+    
+    /***********************************************************************/
+    // Uvolneni posledniho zabraneho bloku
+    //first = &first_arena[1];
+    //next = first->next;
     //printf("\n------HEADER(0)------\n");
     //printf("h0          :%d\n",first);
     //printf("h0->size    :%d\n",first->size);
     //printf("h0->ASIZE   :%d\n",first->asize);
+    //printf("h0->next    :%d\n",first->next);
     //for(int i = 1;next != first;i++)
     //{
     //    printf("\n------HEADER(%d)------\n",i);
     //    printf("h%d          :%d\n",i,next);
     //    printf("h%d->size    :%d\n",i,next->size);
     //    printf("h%d->ASIZE   :%d\n",i,next->asize);
-    //    //printf("h%d->ptr    :%d\n",i,&next);
+    //    printf("h%d->next    :%d\n",i,next->next);;
     //    next = next->next;
     //}
-    /***********************************************************************/
-    // Uvolneni posledniho zabraneho bloku
     mfree(p3);
+
+    first = &first_arena[1];
+    next = first->next;
+    //printf("\n------HEADER(0)------\n");
+    //printf("h0          :%d\n",first);
+    //printf("h0->size    :%d\n",first->size);
+    //printf("h0->ASIZE   :%d\n",first->asize);
+    //printf("h0->next    :%d\n",first->next);
+    //for(int i = 1;next != first;i++)
+    //{
+    //    printf("\n------HEADER(%d)------\n",i);
+    //    printf("h%d          :%d\n",i,next);
+    //    printf("h%d->size    :%d\n",i,next->size);
+    //    printf("h%d->ASIZE   :%d\n",i,next->asize);
+    //    printf("h%d->next    :%d\n",i,next->next);;
+    //    next = next->next;
+    //}
+    //exit(0);
+    
     /**
      *                p1          p2          p3
      *   +-----+------+----+------+----+------+----------------+
@@ -210,18 +240,19 @@ int main()
     //printf("h0          :%d\n",first);
     //printf("h0->size    :%d\n",first->size);
     //printf("h0->ASIZE   :%d\n",first->asize);
+    //printf("h0->next    :%d\n",first->next);
     //for(int i = 1;next != first;i++)
     //{
     //    printf("\n------HEADER(%d)------\n",i);
     //    printf("h%d          :%d\n",i,next);
     //    printf("h%d->size    :%d\n",i,next->size);
     //    printf("h%d->ASIZE   :%d\n",i,next->asize);
-    //    //printf("h%d->ptr    :%d\n",i,&next);
+    //    printf("h%d->next    :%d\n",i,next->next);
     //    next = next->next;
     //}
-    
-    // Dalsi alokace se nevleze do existujici areny
-    printf("p4\n");
+    //
+    //// Dalsi alokace se nevleze do existujici areny
+    //printf("p4\n");
     void *p4 = mmalloc(PAGE_SIZE*2);
     /**
      *   /-- first_arena
@@ -236,35 +267,35 @@ int main()
      *       +-----+------+---------------------------+------+-----+
      */
 
-    Arena *nextArena = first_arena;
-    printf("NEXT ARENA: %d\n",nextArena);
-    for(int j; nextArena != NULL;j++)
-    {
-
-        printf("\n-----------ARENA(%d)----------\n",j);
-        first = &nextArena[1];
-        next = first->next;
-        
-        printf("\n------HEADER(0)------\n");
-        printf("h0          :%d\n",first);
-        printf("h0->size    :%d\n",first->size);
-        printf("h0->ASIZE   :%d\n",first->asize);
-
-        for(int i = 1;next != first;i++)
-        {
-            printf("\n------HEADER(%d)------\n",i);
-            printf("h%d          :%d\n",i,next);
-            printf("h%d->size    :%d\n",i,next->size);
-            printf("h%d->ASIZE   :%d\n",i,next->asize);
-            //printf("h%d->ptr    :%d\n",i,&next);
-            next = next->next;
-            
-        }
-        nextArena = nextArena->next;
-        
-    }
+    //Arena *nextArena = first_arena;
+    //printf("NEXT ARENA: %d\n",nextArena);
+    //for(int j; nextArena != NULL;j++)
+    //{
+//
+//    //    printf("\n-----------ARENA(%d)----------\n",j);
+//    //    first = &nextArena[1];
+//    //    next = first->next;
+//    //    
+//    //    printf("\n------HEADER(0)------\n");
+//    //    printf("h0          :%d\n",first);
+//    //    printf("h0->size    :%d\n",first->size);
+//    //    printf("h0->ASIZE   :%d\n",first->asize);
+//
+//    //    for(int i = 1;next != first;i++)
+//    //    {
+//    //        printf("\n------HEADER(%d)------\n",i);
+//    //        printf("h%d          :%d\n",i,next);
+//    //        printf("h%d->size    :%d\n",i,next->size);
+//    //        printf("h%d->ASIZE   :%d\n",i,next->asize);
+//    //        //printf("h%d->ptr    :%d\n",i,&next);
+//    //        next = next->next;
+//    //        
+//    //    }
+//    //    nextArena = nextArena->next;
+//    //    
+    //}
     /***********************************************************************/
-    printf("REALOCCCCC\n");
+    //printf("REALOCCCCC\n");
     p4 = mrealloc(p4, PAGE_SIZE*2 + 2);
     /**
      *                    p4
@@ -278,6 +309,6 @@ int main()
     /***********************************************************************/
     mfree(p4);
 
-
+    printf("\n-------------------END-------------------\n");
     return 0;
 }

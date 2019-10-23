@@ -59,16 +59,6 @@ struct arena {
 Arena *first_arena = NULL;
 
 
-static
-Header *find_space(size_t size)
-{
-	if ( first_arena == NULL )
-	{
-		exit(3);
-	}
-
-}
-
 
 /**
  * Return size alligned to PAGE_SIZE
@@ -212,11 +202,13 @@ bool hdr_can_merge(Header *left, Header *right)
 static
 void hdr_merge(Header *left, Header *right)
 {
+	//printf("left	:%d\n");
+	//printf("new right	:%d\n",right->next);
     if(hdr_can_merge(left,right))
     {
     	left->next = right->next;
     	left->size = left->size + right->size + sizeof(Header);
-    	right = -1;
+    	right = NULL;
     }
 }
 
@@ -228,7 +220,8 @@ void hdr_merge(Header *left, Header *right)
 void *mmalloc(size_t size)
 {
     if (first_arena == NULL)
-    {
+    {	
+    	//printf("create first\n");
     	first_arena = arena_alloc(size);
     	//pointer to page header
     	Header *hArea = (Arena*) (first_arena);
@@ -247,54 +240,77 @@ void *mmalloc(size_t size)
     }
     else
     {
-    	printf("malloc\n");
+    	//printf("malloc %d\n",size);
     	Arena *arena = (Arena*) (first_arena);
     	Header *first = (Header*) (&arena[1]);
+
+    	//find last arena
+    	while(arena->next != NULL)
+    	{
+    		arena = arena->next;
+    	}
+
 		//--TODO -- best fit
     	size_t	bestSize = PAGE_SIZE*32;
     	Header *best = NULL;
 		//find best page
 		Header *h = first;
-    	while((h->size < size || h->asize != 0) && h->next != first)
+
+    	while(h->next != first)
     	{
-    		h = h->next;
-    		printf("h:%d\n",h);
-    		printf("f:%d\n",first);
-    		if(h == first)
+    		
+    		if(h->asize == 0 && bestSize > h->size && size < h->size)
     		{
-    			printf("neco\n");
-    			//no next arena
-    			if(arena->next == NULL)
-    			{
-    				//Creating new arena
-    				printf("-------------CREATING NEW ARENA---------------\n");
-    				
-
-    				Arena *tmp = arena_alloc(size);
-    				Header *hArea = (Arena*) (tmp);
-			    	Header *hPage = (Header*)(&tmp[1]);
-					
-
-			    	hPage->asize = size;
-			    	hPage->size = size;
-			    	hPage->next = (char*) hPage + hPage->size + sizeof(Header);
-			    	Header *hPage2 = hPage->next;
-			    	hPage2->size = hArea->size - hPage->size - 2*sizeof(Header);
-			    	hPage2->asize = 0;
-			    	hPage2->next = (char*) hPage;
-			    	
-			    	arena->next = tmp;
-			    	//printf("CREATED\n");
-			    	return (char*) hPage + sizeof(Header);
-    			}
-    			h = (Header*) (&arena[1]);
+    			bestSize = h->size;
+    			best = h;
     		}
 
-    		if(h->size < bestSize)
-    			{
-    				bestSize = h->size;
-    				best = h;
-    			}
+    		h = h->next;
+    	}
+    	//check last
+    	if(h->next == first)
+    	{
+    		//printf("check last\n");
+    		if(h->asize == 0 && bestSize > h->size && size < h->size)
+    		{
+    			//printf("found last\n");
+    			bestSize = h->size;
+    			best = h;
+    		}
+    	}
+
+    	//not found
+    	if (best == NULL)
+    	{
+    		//printf("create new arena\n");
+    		Arena *tmp 		= arena_alloc(size);
+    		Arena *hArea 	= (Arena*) (tmp);
+    		Header *h1 		= (Header*) (&tmp[1]);
+    		//Header *h2 		= (Header*) (char*) h1 + size + sizeof(Header);
+    		//set next to old arena
+    		arena->next = tmp;
+
+
+    		h1->asize 	= size;
+    		h1->size 	= size;
+    		h1->next 	= (char*) h1 + h1->size + sizeof(Header);
+
+    		//printf("harea->size	:%d\n",hArea->size);
+    		//printf("h1->size	:%d\n",h1->size);
+    		//printf("TEST\n");
+    		Header *h2 	= h1->next;
+    		h2->size 	= hArea->size - h1->size - 2*sizeof(Header);
+    		h2->asize 	= 0;
+    		//printf("hPage2		:%d\n",h2);
+    		//printf("h2->size	:%d\n",h2->size);
+    		//printf("TEST\n");
+
+    		h2->next 	= h->next;
+    		h->next 	= h1;
+
+    		//printf("CREATED\n");
+    		return (char*) h1 + sizeof(Header);
+
 
     	}
 
@@ -302,12 +318,12 @@ void *mmalloc(size_t size)
     	
     	
 
-   	printf("----BEST FIT SEARCH----\n");
-    printf("BEST SIZE:%d\n",bestSize);
-    printf("BEST HEAD:%d\n",best);
-    hdr_split(h,size);
-    h->asize=size;
-    return (char*) h + sizeof(Header);
+   	//printf("----BEST FIT SEARCH----\n");
+    //printf("BEST SIZE:%d\n",bestSize);
+    //printf("BEST HEAD:%d\n",best);
+    hdr_split(best,size);
+    best->asize=size;
+    return (char*) best + sizeof(Header);
     }
 
     return NULL;
@@ -331,11 +347,11 @@ void mfree(void *ptr)
 
 	h->asize = 0;
 	Header *next = h->next;
-
+	Header *first = (Header*) (&first_arena[1]);
 	//merge blocks on right
-	while(next->asize == 0 && next->next != h)
+	while(next->asize == 0 && next != first)
 	{	
-		printf("----merge to right----\n");
+		//printf("----merge to right----\n");
 		//printf("left	:%d\n",h);
 		//printf("right	:%d\n",next);
 		Header *tmp = next->next;
@@ -353,7 +369,7 @@ void mfree(void *ptr)
 	{
 		while(prev->asize == 0 && prev != h)
 		{
-			printf("----merge to left----\n");
+			//printf("----merge to left----\n");
 			//printf("left	:%d\n",prev);
 			//printf("right	:%d\n",h);
 			hdr_merge(prev,h);
@@ -378,7 +394,7 @@ void mfree(void *ptr)
  */
 void *mrealloc(void *ptr, size_t size)
 {
-	printf("REALLOC\n");
+	//printf("REALLOC\n");
 	mfree(ptr);
     return mmalloc(size);
 }
