@@ -183,28 +183,39 @@ void get_dns_answer(unsigned char *target)
     data = buffer + sizeof(struct DNS_HEADER);
     //Question section
     int stop = 0;
-    printf("Question section (%d)", ntohs(dns->q_count));
+    printf("Question section (%d)\n", ntohs(dns->q_count));
     for(int i = 0;i<ntohs(dns->q_count);i++)
     {
         int length;
         unsigned char name[100];
         get_name(data,name,&length,buffer);
         data = data + length;
-        printf("\nNAME:%s",name);
-        printf("\nLENGTH:%d",length); 
+        //printf("\nNAME:%s",name);
+        //printf("\nLENGTH:%d",length); 
         struct QUESTION *q = (struct QUESTION*)(data);
-        printf("\nTYPE:%d\n",ntohs(q->qtype));
-        printf("CLASS:%d\n",ntohs(q->qclass));
-        data = data + sizeof(struct QUESTION);
+        //printf("\nTYPE:%d\n",ntohs(q->qtype));
+        //printf("CLASS:%d->",ntohs(q->qclass));
 
+        data = (char*) data + sizeof(struct QUESTION);
+
+        char *type = "AAA";
         if(ntohs(q->qtype) == 1)
         {
-            printf("A\n");
+            type = "A";
         }
+        char *qclass = "ERROR";
+        if(ntohs(q->qclass) == 1)
+        {
+        	qclass = "IN";
+        }
+
+
+        //--TODO--
+        printf("%s, %s, %s\n",name,type,qclass);
     }
 
     //Answer section
-    printf("\nAnswer section (%d)", ntohs(dns->ans_count));
+    printf("Answer section (%d)", ntohs(dns->ans_count));
     for(int i = 0;i<ntohs(dns->ans_count);i++)
     {
     	
@@ -217,42 +228,60 @@ void get_dns_answer(unsigned char *target)
     	//get resources
     	struct ANSWER answer;
     	answer.name = name;
-    	printf("\nNAME:%s",answer.name);
-        printf("\nLENGTH:%d",length);
     	answer.resource = (struct REC_DATA*)(data);
-        printf("\nTYPE:%d",ntohs(answer.resource->type));
+    	data += sizeof(struct REC_DATA);
+
+    	printf("\nNAME:%s",answer.name);
+        printf("\nNAME LENGTH:%d",length);
+    	printf("\nTTL:%d\n",answer.resource->ttl);
+    	printf("\nDATA LENGTH:%d",answer.resource->data_len);
+        printf("\nTYPE:%d\n",ntohs(answer.resource->type));
     	
     	//1 	-> IPv4
     	//28 	-> IPv6
         
-        short type = ntohs(answer.resource->type);
-        printf(":%d",type);
-        data = data + sizeof(struct REC_DATA);
-        exit(0);
-    	if(ntohs(answer.resource->type) == 1)
-    	{	
-
-            printf("\nType 1");
-            //allocate memmory for data and copy it from buffer
-    		answer.data = (unsigned char*)malloc(ntohs(answer.resource->data_len));
-
-    		for(int j = 0;i<ntohs(answer.resource->data_len);j++)
+        int type = ntohs(answer.resource->type);
+        
+    	printf("type:%d\n",type);
+    	
+    	if(type == 1)
+    	{
+    		answer.data = (unsigned char*)malloc(answer.resource->data_len);
+    		//copy data
+    		for(int j = 0; j<ntohs(answer.resource->data_len);j++)
     		{
-    			answer.data[j] = *data;
-    			*data++;
+    			answer.data[j]=data[j];
     		}
+    		//add end of string to data
     		answer.data[ntohs(answer.resource->data_len)] = '\0';
+    		//seek the pointer
+    		data = data + ntohs(answer.resource->data_len);
+    		char *type = "AAA";
+	        if(ntohs(answer.resource->type) == 1)
+	        {
+	            type = "A";
+	        }
+	        char *qclass = "ERROR";
+	        if(ntohs(answer.resource->_class) == 1)
+	        {
+	        	qclass = "IN";
+	        }
+	
+	    		printf("%s, %s, %s, %d, %s \n",name,type,qclass,answer.resource->ttl,"NECO");
+	    	}
 
-    	}
-    	else if (ntohs(answer.resource->type) == 28)
-    	{
 
-    	}
-    	else
-    	{
-    		//get_name(data,answer.data,&length,buffer);
-    		//data += length;
-    	}
+	   	else if (type == 28)
+	   	{
+	
+	   	}
+	   	else
+	   	{
+	
+	    }
+
+    	printf("END\n");
+    	exit(0);
 
     }
 
